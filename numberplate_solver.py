@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import itertools
 
 class number:
     def __init__(self,value):
@@ -47,10 +48,52 @@ def create_brackets(values):
 def parse_args(argc,argv):
     pass
 
+def extract_operators(expression_str):
+    result=[]
+    expr_itr=iter(expression_str)
+    while True:
+        try:
+            if next(expr_itr)=='<':
+                operators=[]
+                current_char=next(expr_itr)
+                while current_char != '>':
+                    operators.append(current_char)
+                    current_char=next(expr_itr)
+                result.append(operators)
+        except StopIteration:
+            break
+    return result
+        
+def replace_with_operator(expression_str,operators):
+    result=list(expression_str)
+    expr_itr=iter(expression_str)
+    is_in_operator = False
+    idx_current_operator=0
+    for i in range(len(expression_str)):
+        if result[i] =='<':
+            is_in_operator = True
+            result[i] = ' '
+        elif result[i] =='>':
+            is_in_operator = False
+            result[i] = operators[idx_current_operator]
+            idx_current_operator+=1
+        elif is_in_operator:
+            result[i] = ' '
+    return "".join(result).replace(' ','')
+
+def calc(expression_str,fast_exit=False):
+    operators=extract_operators(expression_str)
+    #print(operators)
+    for operator_combination in itertools.product(*operators):
+        replaced_expr=replace_with_operator(expression_str,operator_combination)
+        print(replaced_expr)
+    
+
 def main():
     brackets=create_brackets([number('A'),number('B'),number('C'),number('D')])
     for meta_bracket in brackets:
-        print(meta_bracket.to_string())
+        #print(meta_bracket.to_string())
+        calc(meta_bracket.to_string())
 
 
 if __name__ == "__main__":
