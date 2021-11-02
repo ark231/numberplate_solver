@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import itertools
+import sympy
+import sys
 
 class number:
     def __init__(self,value):
@@ -46,7 +48,13 @@ def create_brackets(values):
     return result
 
 def parse_args(argc,argv):
-    pass
+    if argc <4+1:
+        print("error: too few arguments")
+        exit(-1)
+    else:
+        result={}
+        result["numbers"]={'A':int(argv[1]),'B':int(argv[2]),'C':int(argv[3]),'D':int(argv[4])}
+        return result
 
 def extract_operators(expression_str):
     result=[]
@@ -81,20 +89,45 @@ def replace_with_operator(expression_str,operators):
             result[i] = ' '
     return "".join(result).replace(' ','')
 
-def calc(expression_str,fast_exit=False):
+def calc(expression_str,value_dict,desired_result=10,fast_exit=False):
     operators=extract_operators(expression_str)
     #print(operators)
+    ok_exprs=set()
     for operator_combination in itertools.product(*operators):
         replaced_expr=replace_with_operator(expression_str,operator_combination)
-        print(replaced_expr)
+        #print(replaced_expr)
+        A,B,C,D=sympy.symbols("A,B,C,D")
+        expr=sympy.parse_expr(replaced_expr)
+        eval_result=expr.subs(value_dict)
+        if eval_result==desired_result:
+            ok_exprs.add(expr)
+            if fast_exit:
+                break
+    return ok_exprs
+
+def output_result(ok_exprs,value_dict,output_configs={"spoiler":True}):
+    if len(ok_exprs)==0:
+        print("no solution found")
+    else:
+        print(f"{len(ok_exprs)} solutions found")
+        if output_configs["spoiler"]:
+            print("found solutions:")
+            for ok_expr in ok_exprs:
+                output=sympy.pretty(ok_expr)
+                for symbol,value in value_dict.items():
+                    output=output.replace(symbol,str(value))
+                print(output)
     
 
-def main():
+def main(argc,argv):
+    input_data=parse_args(argc,argv)
     brackets=create_brackets([number('A'),number('B'),number('C'),number('D')])
+    ok_exprs=set()
     for meta_bracket in brackets:
         #print(meta_bracket.to_string())
-        calc(meta_bracket.to_string())
+        ok_exprs=ok_exprs|calc(meta_bracket.to_string(),input_data["numbers"])
+    output_result(ok_exprs,input_data["numbers"])
 
 
 if __name__ == "__main__":
-    main()
+    main(len(sys.argv),sys.argv)
