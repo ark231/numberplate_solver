@@ -5,17 +5,28 @@ class number:
         self.value=value
 
     def to_string(self,is_head=False):
-        return str(self.value)
+        if not is_head:
+            return str(self.value)
+        else:
+            return f"(< ->{str(self.value)})"
 
 class bracket:
     def __init__(self,contents):
         self.contents=contents
 
     def to_string(self,is_head=False):
-        result="("
+        result_inner=""
+        current_is_head=True #unused unless is_head is True
         for content in self.contents:
-            result+=content.to_string()+"<+-*/>"
-        result=result[:-len("<+-*/>")]+")"
+            if  current_is_head == False:
+                result_inner+=content.to_string()+"<+-*/>"
+            else:
+                result_inner+=content.to_string(True)+"<+-*/>"
+                current_is_head=False
+        result_inner=result_inner[:-len("<+-*/>")]
+        result=f"({result_inner})"
+        if is_head:
+            result=f"(< ->{result})"
         return result
 
 def create_brackets(values):
