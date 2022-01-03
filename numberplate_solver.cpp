@@ -1,40 +1,17 @@
 #include <algorithm>
-#include <boost/program_options.hpp>
+#include <any>
 #include <iostream>
 #include <set>
-#include <tuple>
+#include <string>
 #include <vector>
 
 #include "numberplate_exprs.hpp"
-namespace bpo = boost::program_options;
 
-int main(int argc, char **argv) {
-    bpo::options_description opt("option");
-    opt.add_options()("help,h", "show this help")("nums,n", bpo::value<std::vector<int>>()->multitoken(),
-                                                  "space separated numberplate,required")(
-        "dest,d", bpo::value<int>()->default_value(10), "destination value")(
-        "all_permutation,p", "try all possible permutation")("only-num,o", "output only the number of solutions found");
-
-    bpo::variables_map varmap;
-    bpo::store(bpo::parse_command_line(argc, argv, opt), varmap);
-    bpo::notify(varmap);
-    if (varmap.count("help")) {
-        std::cout << opt << std::endl;
-        std::exit(EXIT_SUCCESS);
-    }
-    if (!varmap.count("nums")) {
-        std::cerr << "error: too few arguments" << std::endl;
-        std::cerr << opt << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
-    auto np = varmap["nums"].as<std::vector<int>>();
-    if (np.size() != 4) {
-        std::cerr << "error: numberplate must be 4 digits" << std::endl;
-        std::exit(EXIT_FAILURE);
-    }
-    auto destination = varmap["dest"].as<int>();
+int solve_numberplate(int A, int B, int C, int D, int destination = 10, bool all_permutation = false,
+                      bool only_num = false) {
+    std::vector<int> np = {A, B, C, D};
     std::set<std::string> ok_pretties;
-    if (!varmap.count("all_permutation")) {
+    if (!all_permutation) {
         for (const auto expr : numberplate::EXPRS) {
             if (expr(np[0], np[1], np[2], np[3]) == destination) {
                 ok_pretties.insert(expr.pretty(np[0], np[1], np[2], np[3]));
@@ -55,7 +32,7 @@ int main(int argc, char **argv) {
         } while (std::next_permutation(idxs_replaced.begin(), idxs_replaced.end()));
     }
     std::cout << ok_pretties.size() << " solutions found" << std::endl;
-    if (!varmap.count("only-num")) {
+    if (!only_num) {
         for (const auto ok_pretty : ok_pretties) {
             std::cout << ok_pretty << std::endl;
         }
