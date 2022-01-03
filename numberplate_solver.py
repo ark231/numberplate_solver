@@ -54,6 +54,10 @@ def parse_args(argc,argv):
     else:
         result={}
         result["numbers"]={'A':int(argv[1]),'B':int(argv[2]),'C':int(argv[3]),'D':int(argv[4])}
+        result["forc"] = False
+        if argc > 5:
+            if argv[5] == "--forc":
+                result["forc"] = True
         return result
 
 def extract_operators(expression_str):
@@ -89,21 +93,24 @@ def replace_with_operator(expression_str,operators):
             result[i] = ' '
     return "".join(result).replace(' ','')
 
-def calc(expression_str,value_dict,desired_result=10,fast_exit=False):
+def calc(expression_str,value_dict,desired_result=10,fast_exit=False,no_check=False):
     operators=extract_operators(expression_str)
     #print(operators)
     ok_exprs=set()
+    exprs=set()
     for operator_combination in itertools.product(*operators):
         replaced_expr=replace_with_operator(expression_str,operator_combination)
         #print(replaced_expr)
         A,B,C,D=sympy.symbols("A,B,C,D")
         expr=sympy.parse_expr(replaced_expr)
-        eval_result=expr.subs(value_dict)
-        if eval_result==desired_result:
-            ok_exprs.add(expr)
-            if fast_exit:
-                break
-    return ok_exprs
+        exprs.add(expr)
+        if not no_check:
+            eval_result=expr.subs(value_dict)
+            if eval_result==desired_result:
+                ok_exprs.add(expr)
+                if fast_exit:
+                    break
+    return (ok_exprs,exprs)
 
 def output_result(ok_exprs,value_dict,output_configs={"spoiler":True}):
     if len(ok_exprs)==0:
@@ -118,15 +125,86 @@ def output_result(ok_exprs,value_dict,output_configs={"spoiler":True}):
                     output=output.replace(symbol,str(value))
                 print(output)
     
+def output_cpp(exprs):
+    header="""
+#ifndef NUMBERPLATE_EXPRS
+#define NUMBERPLATE_EXPRS
+#include<string>
+#include<functional>
+#include<array>
+namespace numberplate{
+    class four_terms_expr{
+        std::string pretty_;
+        std::function<double(double,double,double,double)> calc_;
+        public:
+        four_terms_expr(const char *pretty,decltype(calc_) calc);
+        std::string pretty() const;//変数部分がA,B,C,Dのまま
+        std::string pretty(double,double,double,double) const;//変数部分を置換
+        double operator()(double arg0,double arg1,double arg2,double arg3) const;
+    };
+    inline std::array<four_terms_expr,$(len(exprs))> EXPRS={
+    """.replace("$(len(exprs))",str(len(exprs)))
+    for expr in exprs:
+        header+="""
+        four_terms_expr(u8"$PRETTY",[](double A,double B,double C,double D){return $CODE;}),
+        """.replace("$PRETTY",sympy.pretty(expr).replace("\n","\\n")).replace("$CODE",sympy.ccode(expr))
+    header+="""
+    };
+}
+#endif"""
+    implementation="""
+#include"numberplate_exprs.hpp"
+#include<stdexcept>
+namespace numberplate{
+    four_terms_expr::four_terms_expr(const char *pretty,decltype(calc_) calc):pretty_(pretty),calc_(calc){}
+    std::string four_terms_expr::pretty() const{return this->pretty_;}
+    std::string four_terms_expr::pretty(double arg0,double arg1,double arg2,double arg3) const{
+        if((arg0<0||9<arg0)||(arg1<0||9<arg1)||(arg2<0||9<arg2)||(arg3<0||9<arg3)){
+            throw std::runtime_error("more than one digit into one-character-wide var");
+        }
+        std::string result=this->pretty_;
+        for(auto itr=result.begin();itr!=result.end();itr++){
+            switch(*itr){ 
+                case 'A':
+                    *itr=std::to_string(arg0)[0];
+                    break;
+                case 'B':
+                    *itr=std::to_string(arg1)[0];
+                    break;
+                case 'C':
+                    *itr=std::to_string(arg2)[0];
+                    break;
+                case 'D':
+                    *itr=std::to_string(arg3)[0];
+                    break;
+            }
+        }
+        return result;
+    }
+    double four_terms_expr::operator()(double arg0,double arg1,double arg2,double arg3) const{
+        return this->calc_(arg0,arg1,arg2,arg3);
+    }
+}
+    """
+    with open("numberplate_exprs.hpp","w") as headerfile:
+        headerfile.write(header)
+    with open("numberplate_exprs.cpp","w") as implfile:
+        implfile.write(implementation)
 
 def main(argc,argv):
     input_data=parse_args(argc,argv)
     brackets=create_brackets([number('A'),number('B'),number('C'),number('D')])
     ok_exprs=set()
+    exprs=set()
     for meta_bracket in brackets:
         #print(meta_bracket.to_string())
-        ok_exprs=ok_exprs|calc(meta_bracket.to_string(),input_data["numbers"])
-    output_result(ok_exprs,input_data["numbers"])
+        calc_results=calc(meta_bracket.to_string(),input_data["numbers"],no_check=input_data["forc"])
+        ok_exprs=ok_exprs|calc_results[0]
+        exprs=exprs|calc_results[1]
+    if not input_data["forc"]:
+        output_result(ok_exprs,input_data["numbers"])
+    else:
+        output_cpp(exprs)
 
 
 if __name__ == "__main__":
