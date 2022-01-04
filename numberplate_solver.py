@@ -135,19 +135,22 @@ def output_cpp(exprs):
 namespace numberplate{
     class four_terms_expr{
         std::string pretty_;
+        std::string pretty_oneline_;
         std::function<double(double,double,double,double)> calc_;
         public:
-        four_terms_expr(const char *pretty,decltype(calc_) calc);
+        four_terms_expr(const char *pretty,const char *pretty_oneline,decltype(calc_) calc);
         std::string pretty() const;//変数部分がA,B,C,Dのまま
         std::string pretty(double,double,double,double) const;//変数部分を置換
+        std::string pretty_oneline() const;//一行に収まるように出力
+        std::string pretty_oneline(double,double,double,double) const;
         double operator()(double arg0,double arg1,double arg2,double arg3) const;
     };
     inline std::array<four_terms_expr,$(len(exprs))> EXPRS={
     """.replace("$(len(exprs))",str(len(exprs)))
     for expr in exprs:
         header+="""
-        four_terms_expr(u8"$PRETTY",[](double A,double B,double C,double D){return $CODE;}),
-        """.replace("$PRETTY",sympy.pretty(expr).replace("\n","\\n")).replace("$CODE",sympy.ccode(expr))
+        four_terms_expr(u8"${PRETTY}",u8"${PRETTY_ONELINE}",[](double A,double B,double C,double D){return ${CODE};}),
+        """.replace("${PRETTY}",sympy.pretty(expr).replace("\n","\\n")).replace("${PRETTY_ONELINE}",str(expr)).replace("${CODE}",sympy.ccode(expr))
     header+="""
     };
 }
@@ -155,14 +158,12 @@ namespace numberplate{
     implementation="""
 #include"numberplate_exprs.hpp"
 #include<stdexcept>
-namespace numberplate{
-    four_terms_expr::four_terms_expr(const char *pretty,decltype(calc_) calc):pretty_(pretty),calc_(calc){}
-    std::string four_terms_expr::pretty() const{return this->pretty_;}
-    std::string four_terms_expr::pretty(double arg0,double arg1,double arg2,double arg3) const{
+namespace{
+    std::string replace_var(std::string src,double arg0,double arg1,double arg2,double arg3){
         if((arg0<0||9<arg0)||(arg1<0||9<arg1)||(arg2<0||9<arg2)||(arg3<0||9<arg3)){
             throw std::runtime_error("more than one digit into one-character-wide var");
         }
-        std::string result=this->pretty_;
+        std::string result=src;
         for(auto itr=result.begin();itr!=result.end();itr++){
             switch(*itr){ 
                 case 'A':
@@ -180,6 +181,17 @@ namespace numberplate{
             }
         }
         return result;
+    }
+}
+namespace numberplate{
+    four_terms_expr::four_terms_expr(const char *pretty,const char *pretty_oneline,decltype(calc_) calc):pretty_(pretty),pretty_oneline_(pretty_oneline),calc_(calc){}
+    std::string four_terms_expr::pretty() const{return this->pretty_;}
+    std::string four_terms_expr::pretty_oneline() const{return this->pretty_oneline_;}
+    std::string four_terms_expr::pretty(double arg0,double arg1,double arg2,double arg3) const{
+        return replace_var(this->pretty_,arg0,arg1,arg2,arg3);
+    }
+    std::string four_terms_expr::pretty_oneline(double arg0,double arg1,double arg2,double arg3) const{
+        return replace_var(this->pretty_oneline_,arg0,arg1,arg2,arg3);
     }
     double four_terms_expr::operator()(double arg0,double arg1,double arg2,double arg3) const{
         return this->calc_(arg0,arg1,arg2,arg3);
