@@ -29,17 +29,17 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="mainwindow.ui" line="151"/>
+        <location filename="mainwindow.ui" line="156"/>
         <source>settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="mainwindow.ui" line="164"/>
+        <location filename="mainwindow.ui" line="169"/>
         <source>one-line expressions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="mainwindow.ui" line="172"/>
+        <location filename="mainwindow.ui" line="177"/>
         <source>try every permutation</source>
         <translation type="unfinished"></translation>
     </message>

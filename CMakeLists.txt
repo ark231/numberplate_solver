@@ -6,13 +6,13 @@ set(CMAKE_CXX_STANDARD 17)
 add_library(numberplate_exprs STATIC
     numberplate_exprs.cpp
     )
-if(ANDROID)
     add_library(numberplate_solver STATIC
     numberplate_solver.cpp
     )
-else()
-add_executable(numberplate_solver
-    numberplate_solver.cpp
-    )
-endif()
 target_link_libraries(numberplate_solver PUBLIC numberplate_exprs)
+if(NOT ANDROID)
+add_executable(solve_numberplate
+    main.cpp
+    )
+target_link_libraries(solve_numberplate PUBLIC numberplate_solver)
+endif()
